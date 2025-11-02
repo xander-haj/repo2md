@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code → Markdown Aggregator</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗂️</text></svg>">
+</head>
+<body class="bg-gray-900 text-gray-50 antialiased">
+
+    <main id="app-container" class="mx-auto flex flex-col gap-6 py-8">
+        <header class="text-center">
+            <h1 class="font-bold text-gray-50">Code → Markdown Aggregator</h1>
+            <h3 class="font-normal text-gray-400">Turn entire repos into a single file for LLMs that can’t unzip archives</h3>
+        </header>
+
+        <div id="drop-zone" class="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-gray-600 rounded-xl cursor-pointer transition-colors duration-300 ease-in-out hover:bg-gray-800 hover:border-blue-500">
+            <div class="flex flex-col items-center gap-4 text-gray-400 pointer-events-none">
+                <i data-lucide="upload-cloud" class="w-12 h-12"></i>
+                <p>
+                    <span class="font-semibold text-blue-400">Click to select a folder</span> or drag and drop it here
+                </p>
+                <p class="text-xs text-gray-500">All processing is done locally in your browser</p>
+            </div>
+            <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden" />
+        </div>
+
+        <p id="status-line" class="text-sm text-gray-500 text-center" aria-live="polite">Awaiting directory selection…</p>
+
+        <div id="toolbar" class="flex flex-wrap items-center justify-center">
+            <button id="download-button" class="btn btn-secondary">
+                <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                Download .md
+            </button>
+            <button id="pdf-button" class="btn btn-secondary hidden">
+                <i data-lucide="file-type-2" class="w-4 h-4 mr-2"></i>
+                Download .pdf
+            </button>
+            <button id="copy-button" class="btn btn-primary">
+                <i data-lucide="copy" class="w-4 h-4 mr-2"></i>
+                Copy to Clipboard
+            </button>
+        </div>
+
+        <div id="preview-pane" class="bg-gray-950/70 border border-gray-700 rounded-lg shadow-inner-lg overflow-y-auto prose prose-invert prose-sm max-w-none">
+            <!-- Rendered markdown will appear here -->
+        </div>
+    </main>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
