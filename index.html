@@ -14,8 +14,12 @@
     <div id="app">
         <div id="upload-view" class="view active">
             <div class="hero-container">
-                <h1>Context Generator</h1>
-                <p style="text-align: center; color: var(--text-muted); margin-top: 0;">Convert local codebases into LLM-ready markdown</p>
+                <h1>Repo2Md</h1>
+                <p style="text-align: center; color: var(--text-muted); margin-top: 0;">Convert repo zips or loose folders to a single Markdown file formatted for AI COnsumption
+                    <br>
+                    auto ignored files:  '__MACOSX', '.DS_Store', 'node_modules', '.git', 'dist', 'out', 'build',
+        '._', 'venv', '.venv', 'env', '__pycache__', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'
+                </p>
                 
                 <div class="drop-zone" id="hero-drop-zone">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; color: var(--text-muted);">
