@@ -5,76 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="styles.css" rel="stylesheet">
     <script src="lib/jszip.min.js"></script>
-    <title>Zip to MD</title>
+    <title>Zip to MD Context</title>
 </head>
 <body>
-    
-    <div class="main-content">
-        <div class="header-row">
-            <h2>Context Generator</h2>
+    <input type="file" id="file-input-global" accept=".zip" class="hidden">
+    <input type="file" id="folder-input-global" webkitdirectory directory multiple class="hidden">
+
+    <div id="app">
+        <div id="upload-view" class="view active">
+            <div class="hero-container">
+                <h1>Context Generator</h1>
+                <p style="text-align: center; color: var(--text-muted); margin-top: 0;">Convert local codebases into LLM-ready markdown</p>
+                
+                <div class="drop-zone" id="hero-drop-zone">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 12px; color: var(--text-muted);">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span class="drop-text" style="font-size: 1.1rem; margin-bottom: 15px; display: block;">Drag & Drop a .zip or folder here<br>or select:</span>
+                    
+                    <div style="display: flex; gap: 12px;">
+                        <button class="mini-btn browse-zip-btn" style="padding: 8px 16px; font-size: 0.9rem;">Browse .zip</button>
+                        <button class="mini-btn browse-folder-btn" style="padding: 8px 16px; font-size: 0.9rem;">Browse Folder</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="top-collapsible-area">
-            <div id="drop-zone" class="drop-zone">
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px; color: var(--text-muted);">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <span id="drop-text" style="margin-bottom: 12px; display: block;">Drag & Drop a .zip or folder here<br>or select:</span>
-                
-                <div style="display: flex; gap: 8px;">
-                    <button id="browse-zip-btn" class="mini-btn" style="border: 1px solid var(--border); padding: 4px 8px;">Browse .zip</button>
-                    <button id="browse-folder-btn" class="mini-btn" style="border: 1px solid var(--border); padding: 4px 8px;">Browse Folder</button>
+        <div id="workspace-view" class="view hidden">
+            
+            <div class="left-panel">
+                <div class="header-row">
+                    <h2>Context Generator</h2>
                 </div>
 
-                <input type="file" id="file-input" accept=".zip" class="hidden">
-                <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
+                <div class="drop-zone compact" id="side-drop-zone">
+                    <span class="drop-text" style="font-size: 0.85rem; margin-bottom: 8px; display: block;">Load new .zip or folder:</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="mini-btn browse-zip-btn">Browse .zip</button>
+                        <button class="mini-btn browse-folder-btn">Browse Folder</button>
+                    </div>
+                </div>
+
+                <div class="export-settings-group">
+                    <label for="export-system-prompt">System Prompt Prefix (Optional)</label>
+                    <textarea id="export-system-prompt" class="export-system-prompt" placeholder="e.g. Review the following codebase for performance bottlenecks..."></textarea>
+                    
+                    <label for="export-mode-select">Export Mode</label>
+                    <select id="export-mode-select" class="export-mode-select">
+                        <option value="full">Full Code Export + File Tree</option>
+                        <option value="tree-only">File Tree Only (Generate file_tree.md)</option>
+                    </select>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <label for="custom-ignore-input">Custom Ignores</label>
+                        <button id="custom-ignore-toggle-btn" class="mini-btn icon-only" title="Toggle Settings">⚙️</button>
+                    </div>
+                    <div id="custom-ignore-container" class="hidden">
+                        <input type="text" id="custom-ignore-input" class="custom-ignore-input" placeholder="e.g. my_secrets/, draft.md" />
+                    </div>
+                </div>
+
+                <div class="ignored-info-container">
+                    <div class="ignored-header">
+                        <span>Auto-Ignored Items</span>
+                        <span id="ignored-count" class="badge warning">0</span>
+                    </div>
+                    <ul id="ignored-files-list" class="ignored-list"></ul>
+                </div>
+
+                <div class="stat-header">
+                    <span class="stat-label">Estimated Context:</span>
+                    <span id="total-tokens" class="stat-value">0 tokens</span>
+                </div>
+
+                <div class="actions">
+                     <button id="copy-btn" class="primary" disabled>Copy Context</button>
+                     <button id="generate-md-btn" class="primary" disabled>Download .md</button>
+                </div>
             </div>
 
-            <div class="export-settings-group">
-                <label for="export-system-prompt">System Prompt Prefix (Optional)</label>
-                <textarea id="export-system-prompt" class="export-system-prompt" placeholder="e.g. Review the following codebase for performance bottlenecks..."></textarea>
-                
-                <label for="export-mode-select">Export Mode</label>
-                <select id="export-mode-select" class="export-mode-select">
-                    <option value="full">Full Code Export + File Tree</option>
-                    <option value="tree-only">File Tree Only (Generate file_tree.md)</option>
-                </select>
+            <div class="right-panel">
+                <div class="tree-header">
+                    <span>Extracted Files</span>
+                    <span id="file-count-badge" class="badge">0 files</span>
+                </div>
+                <div id="export-file-tree" class="file-tree">
+                    <div class="empty-state">Scan results will appear here.</div>
+                </div>
             </div>
-        </div>
 
-        <div class="stat-header">
-            <span class="stat-label">Estimated Context:</span>
-            <span id="total-tokens" class="stat-value">0 tokens</span>
-        </div>
-
-        <div class="actions">
-             <button id="copy-btn" class="primary" disabled>Copy Context</button>
-             <button id="generate-md-btn" class="primary" disabled>Download .md</button>
-        </div>
-    </div>
-
-    <div id="drawer-toggle" class="drawer-header">
-        <span>Files in Export <span id="file-count-badge" class="badge">0</span></span>
-        <div class="drawer-actions">
-            <button id="custom-ignore-toggle-btn" class="mini-btn" title="Custom Ignores">⚙️</button>
-            <button id="panel-toggle-btn" class="panel-toggle-btn" aria-label="Toggle Panel">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="chevron-icon">
-                    <polyline points="6 9 12 15 18 9"/>
-                </svg>
-            </button>
-        </div>
-    </div>
-
-    <div id="drawer-content" class="drawer-content hidden">
-        <div id="custom-ignore-container" class="custom-ignore-container hidden">
-            <label for="custom-ignore-input">Custom Ignores (comma separated)</label>
-            <input type="text" id="custom-ignore-input" class="custom-ignore-input" placeholder="e.g. my_secrets/, draft_notes.md" />
-        </div>
-        
-        <div id="export-file-tree" class="file-tree">
-            <div class="empty-state">Upload a ZIP file or folder to view contents.</div>
         </div>
     </div>
 

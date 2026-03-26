@@ -1,32 +1,36 @@
-// DOM Elements
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const folderInput = document.getElementById('folder-input');
-const browseZipBtn = document.getElementById('browse-zip-btn');
-const browseFolderBtn = document.getElementById('browse-folder-btn');
+// --- DOM Elements ---
+// Views
+const uploadView = document.getElementById('upload-view');
+const workspaceView = document.getElementById('workspace-view');
+
+// Global Inputs
+const fileInputGlobal = document.getElementById('file-input-global');
+const folderInputGlobal = document.getElementById('folder-input-global');
+
+// Settings & Controls
 const exportSystemPromptEl = document.getElementById('export-system-prompt');
 const exportModeSelect = document.getElementById('export-mode-select');
 const customIgnoreToggleBtn = document.getElementById('custom-ignore-toggle-btn');
 const customIgnoreContainer = document.getElementById('custom-ignore-container');
 const customIgnoreInput = document.getElementById('custom-ignore-input');
+
+// Ignored Output
+const ignoredCountBadge = document.getElementById('ignored-count');
+const ignoredFilesListEl = document.getElementById('ignored-files-list');
+
+// Outputs & Actions
 const exportFileTreeEl = document.getElementById('export-file-tree');
 const fileCountBadge = document.getElementById('file-count-badge');
 const totalTokensEl = document.getElementById('total-tokens');
 const copyBtn = document.getElementById('copy-btn');
 const generateMdBtn = document.getElementById('generate-md-btn');
-const dropText = document.getElementById('drop-text');
 
-// Takeover Mode Elements
-const topCollapsibleArea = document.getElementById('top-collapsible-area');
-const drawerToggle = document.getElementById('drawer-toggle');
-const drawerContent = document.getElementById('drawer-content');
-const panelToggleBtn = document.getElementById('panel-toggle-btn');
-
-// State
+// --- State ---
 const workspaceFilesMap = new Map();
 let extractedFiles = [];
+let ignoredFilesLog = [];
 
-// Constants
+// --- Constants ---
 const TEXT_EXTENSIONS = new Set(['js', 'jsx', 'ts', 'tsx', 'py', 'html', 'css', 'scss', 'json', 'md', 'txt', 'yaml', 'yml', 'sh', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'rb', 'swift', 'kt', 'sql', 'xml', 'env']);
 const LANGUAGE_MAP = {
     'js': 'javascript', 'jsx': 'jsx', 'ts': 'typescript', 'tsx': 'tsx', 'py': 'python',
@@ -54,7 +58,21 @@ function formatTokens(num) {
     return num;
 }
 
-// --- Initialization & Persistence (Web Storage API) ---
+function switchView(viewName) {
+    if (viewName === 'workspace') {
+        uploadView.classList.remove('active');
+        uploadView.classList.add('hidden');
+        workspaceView.classList.remove('hidden');
+        workspaceView.classList.add('active');
+    } else {
+        workspaceView.classList.remove('active');
+        workspaceView.classList.add('hidden');
+        uploadView.classList.remove('hidden');
+        uploadView.classList.add('active');
+    }
+}
+
+// --- Initialization & Persistence ---
 document.addEventListener('DOMContentLoaded', () => {
     const systemPrompt = localStorage.getItem('systemPrompt');
     const customIgnores = localStorage.getItem('customIgnores');
@@ -80,98 +98,73 @@ customIgnoreToggleBtn.addEventListener('click', (e) => {
     customIgnoreContainer.classList.toggle('hidden');
 });
 
-// --- Drawer & Takeover Mode Logic ---
-function toggleDrawer() {
-    drawerContent.classList.toggle('hidden');
-    
-    if (topCollapsibleArea) {
-        topCollapsibleArea.classList.toggle('hidden');
-    }
-    
-    const isHidden = drawerContent.classList.contains('hidden');
-    
-    if (isHidden) {
-        panelToggleBtn.classList.remove('open');
-        panelToggleBtn.style.color = '';
-    } else {
-        panelToggleBtn.classList.add('open');
-        panelToggleBtn.style.color = 'var(--accent)';
-    }
-}
-
-if (drawerToggle) {
-    drawerToggle.addEventListener('click', toggleDrawer);
-}
-
-if (panelToggleBtn) {
-    panelToggleBtn.addEventListener('click', (e) => {
+// --- Input Binding (Zip & Folder Buttons) ---
+document.querySelectorAll('.browse-zip-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleDrawer();
+        fileInputGlobal.click();
     });
-}
-
-// --- Button Events ---
-browseZipBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    fileInput.click();
 });
 
-browseFolderBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    folderInput.click();
+document.querySelectorAll('.browse-folder-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        folderInputGlobal.click();
+    });
 });
 
-fileInput.addEventListener('change', (e) => {
+fileInputGlobal.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
         handleZipFile(e.target.files[0]);
     }
 });
 
-folderInput.addEventListener('change', async (e) => {
+folderInputGlobal.addEventListener('change', async (e) => {
     if (e.target.files.length > 0) {
         await handleFolderFiles(e.target.files);
     }
 });
 
-// --- Drag & Drop Logic ---
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-});
+// --- Drag & Drop Binding ---
+document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('dragover');
+    });
 
-dropZone.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-});
+    zone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+    });
 
-dropZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    
-    const items = e.dataTransfer.items;
-    if (items && items.length > 0) {
-        const item = items[0];
-        const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    zone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
         
-        if (entry) {
-            if (entry.isDirectory) {
-                await handleDroppedFolder(entry);
-            } else if (entry.isFile && entry.name.endsWith('.zip')) {
-                const file = item.getAsFile();
-                await handleZipFile(file);
-            } else {
-                alert('Please drop a .zip file or an unpacked folder.');
-            }
-        } else if (e.dataTransfer.files.length > 0) {
-            // Fallback for older browsers
-            const file = e.dataTransfer.files[0];
-            if (file.name.endsWith('.zip')) {
-                await handleZipFile(file);
-            } else {
-                alert('Folder drop unsupported in this browser. Please use the Browse Folder button.');
+        const items = e.dataTransfer.items;
+        if (items && items.length > 0) {
+            const item = items[0];
+            const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+            
+            if (entry) {
+                if (entry.isDirectory) {
+                    await handleDroppedFolder(entry);
+                } else if (entry.isFile && entry.name.endsWith('.zip')) {
+                    const file = item.getAsFile();
+                    await handleZipFile(file);
+                } else {
+                    alert('Please drop a .zip file or an unpacked folder.');
+                }
+            } else if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.name.endsWith('.zip')) {
+                    await handleZipFile(file);
+                } else {
+                    alert('Folder drop unsupported in this browser. Please use the Browse Folder button.');
+                }
             }
         }
-    }
+    });
 });
 
 // --- File Processing Core ---
@@ -196,13 +189,37 @@ function isIgnored(path, ignores) {
     return false;
 }
 
-function finishLoadingFiles(sourceName) {
-    renderExportTree(extractedFiles);
-    dropText.innerHTML = `Loaded <strong>${sourceName}</strong><br><span style="font-size: 0.8rem; color: var(--success);">Ready for export</span>`;
+function renderIgnoredList() {
+    ignoredFilesListEl.innerHTML = '';
+    ignoredCountBadge.innerText = ignoredFilesLog.length;
     
-    if (drawerContent && drawerContent.classList.contains('hidden')) {
-        toggleDrawer();
+    if (ignoredFilesLog.length === 0) {
+        const li = document.createElement('li');
+        li.innerText = 'No files ignored.';
+        li.style.fontStyle = 'italic';
+        ignoredFilesListEl.appendChild(li);
+        return;
     }
+
+    ignoredFilesLog.slice(0, 100).forEach(path => {
+        const li = document.createElement('li');
+        li.innerText = `🚫 ${path}`;
+        li.title = path;
+        ignoredFilesListEl.appendChild(li);
+    });
+
+    if (ignoredFilesLog.length > 100) {
+        const li = document.createElement('li');
+        li.innerText = `...and ${ignoredFilesLog.length - 100} more hidden items`;
+        li.style.color = 'var(--accent)';
+        ignoredFilesListEl.appendChild(li);
+    }
+}
+
+function finishLoadingFiles() {
+    renderExportTree(extractedFiles);
+    renderIgnoredList();
+    switchView('workspace');
 }
 
 async function processRawTextFile(file, relativePath) {
@@ -238,9 +255,8 @@ async function processRawTextFile(file, relativePath) {
 
 // --- Handler: Folder via Input ---
 async function handleFolderFiles(fileList) {
-    const rootName = fileList[0].webkitRelativePath.split('/')[0] || 'Selected Folder';
-    dropText.innerHTML = `Scanning folder <strong>${rootName}</strong>...`;
     extractedFiles = [];
+    ignoredFilesLog = [];
     workspaceFilesMap.clear();
     const ignores = getIgnoreList();
 
@@ -248,24 +264,31 @@ async function handleFolderFiles(fileList) {
         const file = fileList[i];
         const path = file.webkitRelativePath || file.name;
         
-        if (isIgnored(path, ignores)) continue;
+        if (isIgnored(path, ignores)) {
+            ignoredFilesLog.push(path);
+            continue;
+        }
         await processRawTextFile(file, path);
     }
     
-    finishLoadingFiles(rootName);
-    folderInput.value = ''; // Reset
+    finishLoadingFiles();
+    folderInputGlobal.value = ''; 
 }
 
 // --- Handler: Folder via Drag/Drop ---
 async function handleDroppedFolder(dirEntry) {
-    dropText.innerHTML = `Scanning folder <strong>${dirEntry.name}</strong>...`;
     extractedFiles = [];
+    ignoredFilesLog = [];
     workspaceFilesMap.clear();
     const ignores = getIgnoreList();
 
     async function traverse(entry, pathPrefix) {
         const fullPath = pathPrefix + entry.name;
-        if (isIgnored(fullPath, ignores)) return;
+        
+        if (isIgnored(fullPath, ignores)) {
+            ignoredFilesLog.push(fullPath + (entry.isDirectory ? '/' : ''));
+            return;
+        }
 
         if (entry.isDirectory) {
             const reader = entry.createReader();
@@ -297,13 +320,13 @@ async function handleDroppedFolder(dirEntry) {
     }
     
     await traverse(dirEntry, '');
-    finishLoadingFiles(dirEntry.name);
+    finishLoadingFiles();
 }
 
 // --- Handler: Zip File ---
 async function handleZipFile(file) {
-    dropText.innerHTML = `Scanning <strong>${file.name}</strong>...`;
     extractedFiles = [];
+    ignoredFilesLog = [];
     workspaceFilesMap.clear();
 
     try {
@@ -316,7 +339,10 @@ async function handleZipFile(file) {
         for (const relativePath of allFilePaths) {
             const zipEntry = contents.files[relativePath];
             
-            if (isIgnored(relativePath, ignores)) continue;
+            if (isIgnored(relativePath, ignores)) {
+                ignoredFilesLog.push(relativePath);
+                continue;
+            }
 
             const parts = relativePath.split('/');
             const filename = parts[parts.length - 1];
@@ -344,11 +370,11 @@ async function handleZipFile(file) {
             }
         }
 
-        finishLoadingFiles(file.name);
-        fileInput.value = ''; // Reset
+        finishLoadingFiles();
+        fileInputGlobal.value = ''; 
     } catch (error) {
         console.error(error);
-        dropText.innerHTML = `<span style="color: var(--danger);">Error parsing zip. Is it corrupted?</span>`;
+        alert('Error parsing zip. Is it corrupted?');
     }
 }
 
@@ -583,7 +609,7 @@ function compileMarkdown() {
     return { markdown, filename: 'source_code.md' };
 }
 
-// --- Export Actions (Web API Download) ---
+// --- Export Actions ---
 copyBtn.addEventListener('click', async () => {
     const { markdown } = compileMarkdown();
     try {
